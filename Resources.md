@@ -8,6 +8,9 @@ Resources for sample raw data:
 
 * [List of resources](http://guides.lib.unc.edu/spectroscopy/general)
 
+* [NCBI paper w/ data](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5497826/).
+Haven't been able to read the data from this in a useable way.
+
 Application for easy NMR viewing:
 
 * [GSim](https://sourceforge.net/projects/gsim/)
