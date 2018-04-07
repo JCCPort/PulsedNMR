@@ -62,6 +62,7 @@ def echo_as_T2(t, M0, T2, c, ph):
 
 
 os.chdir('C:\\Users\\Josh\\IdeaProjects\\PulsedNMR\\RDAT')
+#  TODO: Split this into different functions for the different experiments.
 for filename in os.listdir(os.getcwd()):
     dat = read_csv(filename, names=['t', 'm'],
                    engine='c')
