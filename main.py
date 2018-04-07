@@ -90,7 +90,7 @@ for filename in os.listdir(os.getcwd()):
                 np.median(np.where(dat['m'] == find_nearest(dat['m'], decay_con_amp + mini))))
         decay_con_amp_time = dat['t'][decay_con_amp_pos]
         decay_time = decay_con_amp_time - max_loc_time
-        initial = [mx, decay_time, mini, max_loc_time]
+        initial = np.array([mx, decay_time, mini, max_loc_time])
         popt, pcov = curve_fit(echo_as_T2, xdata=dat['t'][b:], ydata=dat['m'][b:], p0=initial, maxfev=10000,
                                method='trf')
         plt.title('{}'.format(filename))
@@ -104,7 +104,6 @@ for filename in os.listdir(os.getcwd()):
         fig_manager.window.showMaximized()
         plt.show()
     elif 'RN' in filename:
-        # dat['m'][dat['t'] < 0] = 0
         len2 = 2 * len(dat['m'])
         xs = np.linspace(np.min(dat['t']), np.max(dat['t']), len2)
         f = interpolate.Rbf(dat['t'], dat['m'], smooth=3, function='gaussian', epsilon=np.mean(np.diff(xs)) * 3)
@@ -114,9 +113,7 @@ for filename in os.listdir(os.getcwd()):
         fig_manager.window.showMaximized()
         plt.show()
         sample_rate = round(1 / np.mean(np.diff(dat['t'])), 11)
-        print(sample_rate)
         length = len(xs)
-        # freq = [x * sample_rate / length for x in np.array(range(0, length))]
         fo = fftpack.fft(-ys)
         freq2 = fftpack.fftfreq(length, 1 / sample_rate)
         halfln = int(length / 2)
@@ -133,10 +130,8 @@ for filename in os.listdir(os.getcwd()):
         plt.show()
     elif 'DAT' in filename:
         sample_rate = round(1 / np.mean(np.diff(dat['t'])), 11)
-        print(sample_rate)
         length = len(dat['t'])
         fo = fftpack.fft(dat['m'])
-        freq2 = fftpack.fftfreq(length, 1 / sample_rate)
         freq4 = [1e6 * x * sample_rate / length for x in np.array(range(0, length))]
         halfln = int(length / 2)
         plt.title('{}'.format(filename))
