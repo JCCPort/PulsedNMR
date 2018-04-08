@@ -33,7 +33,7 @@ class RangeTool:
         self.cid2 = figure2.figure.canvas.mpl_connect('motion_notify_event', self.mouse_move)
         self.cid3 = figure2.figure.canvas.mpl_connect('key_press_event', self.rangeremove)
         self.cid4 = figure2.figure.canvas.mpl_connect('key_press_event', self.finishplot)
-        self.cid5 = figure2.figure.canvas.mpl_connect('button_press_event', self.onpress)
+        # self.cid5 = figure2.figure.canvas.mpl_connect('button_press_event', self.onpress)
         self.Ranges = DataFrame(columns=['Lower Bound', 'LowerIndex', 'Upper Bound', 'UpperIndex', 'Displayed'])
         self.il = 0
         self.iu = 0
