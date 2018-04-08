@@ -15,8 +15,8 @@ class RangeTool:
     def __init__(self, x, y, figure2, ax):
         self.ax = ax
         self.figure2 = figure2
-        self.lx = ax.axhline(color='k', ls='--', linewidth=1)  # the horiz line
-        self.ly = ax.axvline(color='k', ls='--', linewidth=1)  # the vert line
+        self.lx = ax.axhline(color='k', ls='--', linewidth=1, zorder=1, alpha=0.8)  # the horiz line
+        self.ly = ax.axvline(color='k', ls='--', linewidth=1, zorder=2, alpha=0.8)  # the vert line
         self.lowers = np.array([])
         self.uppers = np.array([])
         self.rects = []
@@ -24,9 +24,12 @@ class RangeTool:
         self.DependentVariable = "Counts "
         self.x = x
         self.y = y
+        self.lenx = len(self.x)
+        miny = np.min(self.y)
+        maxy = np.max(self.y)
         self.ax.set_xlim(min(self.x), max(self.x))
-        height = max(self.y) - min(self.y)
-        self.ax.set_ylim(min(self.y) - 0.1 * height, max(self.y) + 0.1 * height)
+        height = maxy - miny
+        self.ax.set_ylim(miny - 0.1 * height, maxy + 0.1 * height)
         # text location in axes coords
         self.txt = ax.text(0.7, 0.9, '', transform=ax.transAxes)
         self.cid1 = figure2.figure.canvas.mpl_connect('key_press_event', self.rangeselect)
@@ -49,7 +52,7 @@ class RangeTool:
             return
 
         x, y = event.xdata, event.ydata
-        indx = min(np.searchsorted(self.x, [x])[0], len(self.x) - 1)
+        indx = min(np.searchsorted(self.x, [x])[0], self.lenx - 1)
         x = self.x[indx]
         y = self.y[indx]
         # update the line positions
@@ -59,9 +62,11 @@ class RangeTool:
         self.figure2.figure.canvas.draw_idle()
         # print('x=%1.2f, y=%1.2f' % (x, y))
 
+    # TODO: Merge the bounds, indices and mpl object into a single Pandas DataFrame that's row's can be deleted.
+    # TODO: Add an object onto plots that lists the range selections?
     def rangeselect(self, event):
         x = event.xdata
-        indx = min(np.searchsorted(self.x, [x])[0], len(self.x) - 1)
+        indx = min(np.searchsorted(self.x, [x])[0], self.lenx - 1)
         x = self.x[indx]
         if event.key == 'tab':
             self.Ranges.at[self.il, 'Lower Bound'] = x
@@ -85,6 +90,7 @@ class RangeTool:
                 pass
         self.cid3 = self.figure2.figure.canvas.mpl_connect('key_press_event', self.rangeremove)
 
+    # TODO: Get this running so that the aforementioned DataFrame rows can be removed with a click.
     # def onpress(self, event):
     #     for entry in self.rects:
     #             print(entry)
@@ -117,8 +123,6 @@ class RangeTool:
                     Polys[0].remove()
                     if self.Ranges == 'Empty DataFrame':
                         print('Range list is empty')
-                # except NotImplementedError:
-                #     Polys[len(self.Ranges.index)] = Polys(alpha=0)[len(self.Ranges.index)]
                 finally:
                     pass
                 self.cid1 = self.figure2.figure.canvas.mpl_connect('key_press_event', self.rangeselect)
