@@ -6,6 +6,8 @@ from pandas import read_csv, read_hdf
 from scipy import fftpack, interpolate
 from scipy.optimize import curve_fit
 
+from range_selector import RangeTool
+
 # from converter import DataConvert
 
 
@@ -145,11 +147,22 @@ def fourier_transformer():
     fig_manager.window.showMaximized()
     plt.plot(dat['t'], dat['m'])
     plt.show()
+    fig, ax = plt.subplots()
     plt.title('{} Fourier Transformed'.format(filename))
-    plt.plot(freq4[1:halfln], abs(fo[1:halfln]))
+    figure, = ax.plot(freq4[1:halfln], abs(fo[1:halfln]))
+    Sel = RangeTool(freq4[1:halfln], abs(fo[1:halfln]), figure, ax)
     fig_manager = plt.get_current_fig_manager()
     fig_manager.window.showMaximized()
     plt.show()
+
+
+def fourier_curvefit():
+    dat, filename = pick_dat()
+    sample_rate = round(1 / np.mean(np.diff(dat['t'])), 11)
+    length = len(dat['t'])
+    fo = fftpack.fft(dat['m'])
+    freq4 = [1e6 * x * sample_rate / length for x in np.array(range(0, length))]
+    halfln = int(length / 2)
 
 
 fourier_transformer()
