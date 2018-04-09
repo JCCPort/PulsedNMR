@@ -24,5 +24,8 @@ site. The code to do this is contained within main.py and the file
  'AAGlycerol_DAT_DAT_DAT.csv' in RDAT is good quality raw data from ChemSpider that
  shows well the effect of the Fourier transform. The other data currently
  contained in this folder does not seem to be the type designed for Fourier
- transforms and relates to the other two experiments above.
+ transforms and relates to the other two experiments above. 3 other more complicated
+raw data files are also included.
+ 
+- 1D Imaging. 
 

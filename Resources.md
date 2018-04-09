@@ -14,3 +14,10 @@ Haven't been able to read the data from this in a useable way.
 Application for easy NMR viewing:
 
 * [GSim](https://sourceforge.net/projects/gsim/)
+
+Useful learning links:
+
+* [Solid-State NMR](http://mutuslab.cs.uwindsor.ca/schurko/ssnmr/). Haven't gone through yet but heard
+it was a useful resource.
+
+* [List of NMR resources](http://www.ebyte.it/library/StansNmrLinks.html)
