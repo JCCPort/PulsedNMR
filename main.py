@@ -64,7 +64,8 @@ def echo_as_T2(t, M0, T2, c, ph):
     :param ph: Phase difference.
     :return: Magnetization in the xy-plane.
     """
-    return M0 * (np.exp(-((t - ph) / T2))) + c
+    # Old form: return M0 * (np.exp(-((t - ph) / T2))) + c
+    return M0 * (np.exp(-(t / T2) - ph)) + c
 
 
 def FID_Exponential_fit():
@@ -134,6 +135,7 @@ def echo_gaussian_fits():
     cents_uncert = []
     heights = []
     heights_uncert = []
+    fig, ax = plt.subplots()
     for i in range(0, len(xrs)):
         mdl = GaussianModel(prefix='G_')
         lne = LinearModel(prefix='L_')
@@ -141,23 +143,49 @@ def echo_gaussian_fits():
         params += lne.guess(yrs[i], x=xrs[i])
         model = mdl + lne
         result = model.fit(yrs[i], params, x=xrs[i], method='leastsq')
-        print(result.params, '\n')
         plt.plot(xrs[i], result.best_fit)
         plt.plot(xrs[i], yrs[i], 'x', ms=2)
         cent = result.params['G_center'].value
         amp = result.params['G_height'].value
+        inter = result.params['L_intercept'].value
+        grad = result.params['L_slope'].value
+        height = amp + ((cent * grad) + inter)
         cents.append(cent)
         cents_uncert.append(result.params['G_center'].stderr)
-        heights.append(amp)
-        height_uncert = result.params['G_height'].stderr
+        heights.append(height)
+        partial_amp = 1
+        partial_grad = cent
+        partial_x = grad
+        partial_inter = 1
+        amp_term = partial_amp * result.params['G_height'].stderr
+        grad_term = partial_grad * result.params['L_slope'].stderr
+        x_term = partial_x * 0.1
+        inter_term = partial_inter * result.params['L_intercept'].stderr
+        # print(amp_term, grad_term, x_term, inter_term)
+        height_uncert = np.sqrt(amp_term ** 2 + grad_term ** 2 + x_term ** 2 + inter_term ** 2)
         heights_uncert.append(height_uncert)
-    print(len(heights_uncert))
-    print(len(cents))
-    popt, pcov = curve_fit(echo_as_T2, xdata=cents, ydata=heights, sigma=heights_uncert, maxfev=30000,
-                           method='lm')
+    maxy = np.max(heights)
+    miny = np.min(heights)
+    # maxx = np.max(cents)
+    # minx = np.min(cents)
+    bounds = [[maxy * 0.97, 0, 0, cents[0] * 0.999], [maxy * 1.03, 0.1, miny * 3, cents[0] * 1.001]]
+    initial = np.array([maxy, 0.003, 0, cents[0]])
+    popt, pcov = curve_fit(echo_as_T2, xdata=cents, ydata=heights, bounds=bounds, p0=initial, sigma=heights_uncert,
+                           maxfev=30000,
+                           method='dogbox')
     plt.plot(cents, echo_as_T2(cents, *popt))
     plt.plot(cents, heights, 'x', ms=4)
-    plt.errorbar(cents, heights, xerr=cents_uncert, yerr=heights_uncert, fmt='.')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Magnetization (A/m)')
+    ax.grid(color='k', linestyle='--', alpha=0.4)
+    plt.axhline(popt[0])
+    plt.axhline(popt[0] / e)
+    plt.text(0.9, 0.9, "T_1: {:.4f} s".format(popt[1]), horizontalalignment='center',
+             verticalalignment='center',
+             transform=ax.transAxes,
+             bbox=dict(pad=8, fc='w'), fontsize=16)
+    fig_manager = plt.get_current_fig_manager()
+    fig_manager.window.showMaximized()
     plt.show()
 
 
@@ -204,7 +232,7 @@ def fourier_transformer():
     fig, ax = plt.subplots()
     plt.title('{} Fourier Transformed'.format(filename))
     figure, = ax.plot(freq4[1:halfln], abs(fo[1:halfln]))
-    Sel = RangeTool(freq4[1:halfln], abs(fo[1:halfln]), figure, ax)
+    Sel = RangeTool(freq4[1:halfln], abs(fo[1:halfln]), figure, ax, 'thing')
     fig_manager = plt.get_current_fig_manager()
     fig_manager.window.showMaximized()
     plt.show()

@@ -133,7 +133,7 @@ class RangeTool:
         if event.key == 'enter':
             chdir('C:\\Users\Josh\IdeaProjects\PulsedNMR\Ranges')
             # Check this isn't writing headers.
-            self.Ranges.to_csv('{}.csv'.format(self.key), index=False, encoding='utf-8', columns=['Lower Bound',
+            self.Ranges.to_csv('{}'.format(self.key), index=False, encoding='utf-8', columns=['Lower Bound',
                                                                                                   'LowerIndex',
                                                                                                   'Upper Bound',
                                                                                                   'UpperIndex'],
