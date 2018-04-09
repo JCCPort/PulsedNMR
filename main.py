@@ -139,15 +139,6 @@ def echo_gaussian_fits():
         lne = LinearModel(prefix='L_')
         params = mdl.guess(yrs[i], x=xrs[i])
         params += lne.guess(yrs[i], x=xrs[i])
-        # minx = np.min(xrs[i])
-        # maxx = np.max(xrs[i])
-        # miny = np.min(yrs[i])
-        # maxy = np.max(yrs[i])
-        # params.add('G_center', value=np.mean(xrs[i]), min=minx*0.9, max=maxx*1.1)
-        # params.add('G_height', min=0, max=maxy*1.2)
-        # params.add('G_amplitude', min=0, max=100)
-        # params.add('L_intercept', min=-1000, max=1000)
-        # params.add('L_slope', min=-100, max=10000)
         model = mdl + lne
         result = model.fit(yrs[i], params, x=xrs[i], method='leastsq')
         print(result.params, '\n')
@@ -155,21 +146,9 @@ def echo_gaussian_fits():
         plt.plot(xrs[i], yrs[i], 'x', ms=2)
         cent = result.params['G_center'].value
         amp = result.params['G_height'].value
-        # inter = result.params['L_intercept'].value
-        # grad = result.params['L_slope'].value
-        # height = amp + ((cent*grad) + inter)
         cents.append(cent)
         cents_uncert.append(result.params['G_center'].stderr)
         heights.append(amp)
-        # partial_amp = 1
-        # partial_grad = cent
-        # partial_x = grad
-        # partial_inter = 1
-        # amp_term = partial_amp*result.params['G_height'].stderr
-        # grad_term = partial_grad*result.params['L_slope'].stderr
-        # x_term = partial_x*0.1
-        # inter_term = partial_inter*result.params['L_intercept'].stderr
-        # print(amp_term, grad_term, x_term, inter_term)
         height_uncert = result.params['G_height'].stderr
         heights_uncert.append(height_uncert)
     print(len(heights_uncert))

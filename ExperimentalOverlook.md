@@ -27,5 +27,5 @@ site. The code to do this is contained within main.py and the file
  transforms and relates to the other two experiments above. 3 other more complicated
 raw data files are also included.
  
-- 1D Imaging. 
+- 1D Imaging.
 

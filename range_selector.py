@@ -1,5 +1,5 @@
 from math import isnan
-from tkinter import filedialog
+from os import chdir
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -12,8 +12,9 @@ class RangeTool:
     For simplicity, I'm assuming x is sorted
     """
 
-    def __init__(self, x, y, figure2, ax):
+    def __init__(self, x, y, figure2, ax, key):
         self.ax = ax
+        self.key = key
         self.figure2 = figure2
         self.lx = ax.axhline(color='k', ls='--', linewidth=1, zorder=1, alpha=0.8)  # the horiz line
         self.ly = ax.axvline(color='k', ls='--', linewidth=1, zorder=2, alpha=0.8)  # the vert line
@@ -128,9 +129,16 @@ class RangeTool:
                 self.cid1 = self.figure2.figure.canvas.mpl_connect('key_press_event', self.rangeselect)
 
     def finishplot(self, event):
+        self.Ranges.astype('float32')
         if event.key == 'enter':
-            filedialog.asksaveasfilename(initialdir="C:\\Users\Josh\IdeaProjects\PulsedNMR",
-                                         title="Save selected range")
+            chdir('C:\\Users\Josh\IdeaProjects\PulsedNMR\Ranges')
+            # Check this isn't writing headers.
+            self.Ranges.to_csv('{}.csv'.format(self.key), index=False, encoding='utf-8', columns=['Lower Bound',
+                                                                                                  'LowerIndex',
+                                                                                                  'Upper Bound',
+                                                                                                  'UpperIndex'],
+                               header=None)
             plt.close()
+            chdir('C:\\Users\Josh\IdeaProjects\PulsedNMR')
         elif event.key == 'escape':
             plt.close()
