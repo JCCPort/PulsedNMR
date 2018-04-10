@@ -66,7 +66,8 @@ def echo_as_T2(t, M0, T2, c, ph):
     :return: Magnetization in the xy-plane.
     """
     # Old form: return M0 * (np.exp(-((t - ph) / T2))) + c
-    return M0 * (np.exp(-(t / T2) - ph)) + c
+    return M0 * (np.exp(-(t / T2) + ph)) + c
+
 
 
 def FID_Exponential_fit():
@@ -127,7 +128,7 @@ def range_to_list():
     return xranges, yranges, xrange, yrange
 
 
-# TODO: Test this function with other data.
+# TODO: Compare this method with simply taking the maximum point of the peaks
 def echo_fits():
     xrs, yrs, xr, yr = range_to_list()
     cents: List[float] = []
@@ -164,12 +165,13 @@ def echo_fits():
         heights_uncert.append(height_uncert)
     maxy = np.max(heights)
     miny = np.min(heights)
-    bounds = [[maxy * 0.95, 0.01, 0, cents[0] * 0.99], [maxy * 1.05, 0.05, miny * 1, cents[0] * 1.01]]
-    initial = np.array([maxy, 0.015, miny, cents[0]])
+    bounds = [[maxy * 0.95, 0.01, 0, 0], [maxy * 2, 0.05, miny * 1, cents[0] * 0.0001]]
+    initial = np.array([maxy * 1.3, 0.015, miny, cents[0] * 0.00005])
     popt, pcov = curve_fit(echo_as_T2, xdata=cents, ydata=heights, bounds=bounds, p0=initial, sigma=heights_uncert,
                            maxfev=30000,
-                           method='trf')
-    plt.plot(cents, echo_as_T2(cents, *popt))
+                           method='dogbox')
+    vals = np.linspace(0, np.max(cents), 1000)
+    plt.plot(vals, echo_as_T2(vals, *popt))
     plt.plot(cents, heights, 'x', ms=4, color='k')
     plt.xlabel("Time (s)")
     plt.ylabel("Magnetization (A/m)")
