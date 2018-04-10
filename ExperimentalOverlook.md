@@ -10,7 +10,8 @@ Experiments to carry out:
  echo is plotted as a function of changing the delay time 2Tau. Not yet
  sure how T<sub>2</sub> is calculated from this plot. Most accurate way
  to measure the amplitude is by fitting a curve, it seems that the echo
- is an exponential rise and fall, check this.
+ is an exponential rise and fall, check this. The function echo_fits returns
+ T<sub>1</sub> from the envelope function.
 
 - Single pulse experiments. The FID of protons is dependent on their
 environment. Consider a molecule with multiple atoms, the protons in

@@ -1,4 +1,5 @@
 from tkinter import filedialog, Tk
+from typing import List
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -111,16 +112,13 @@ def FID_Exponential_fit():
 
 def range_to_list():
     dat1, filename1 = pick_dat("RDAT_Test", "Select dataset to draw from")
-    dat2, filename2 = pick_dat("Ranges", "Select ranges to create lists from", ['Lower Bound', 'LowerIndex',
-                                                                                'Upper Bound', 'UpperIndex'])
-    print(dat1, dat2)
+    dat2 = read_csv("C:\\Users\\Josh\\IdeaProjects\\PulsedNMR\\Ranges\\{}".format(filename1),
+                    names=['Lower Bound', 'LowerIndex', 'Upper Bound', 'UpperIndex'])
     xrange = []
     yrange = []
     xranges = {}
     yranges = {}
     for o in range(0, len(dat2)):
-        print('Lower Index: ', dat2['LowerIndex'][o])
-        print('Upper Index: ', dat2['UpperIndex'][o])
         xrange.append((dat1['t'][dat2['LowerIndex'][o]:dat2['UpperIndex'][o] + 1]).values)
         yrange.append((dat1['m'][dat2['LowerIndex'][o]:dat2['UpperIndex'][o] + 1]).values)
     for o in range(0, len(xrange)):
@@ -129,12 +127,13 @@ def range_to_list():
     return xranges, yranges, xrange, yrange
 
 
-def echo_gaussian_fits():
+# TODO: Test this function with other data.
+def echo_fits():
     xrs, yrs, xr, yr = range_to_list()
-    cents = []
-    cents_uncert = []
-    heights = []
-    heights_uncert = []
+    cents: List[float] = []
+    cents_uncert: List[float] = []
+    heights: List[float] = []
+    heights_uncert: List[float] = []
     fig, ax = plt.subplots()
     for i in range(0, len(xrs)):
         mdl = GaussianModel(prefix='G_')
@@ -145,52 +144,49 @@ def echo_gaussian_fits():
         result = model.fit(yrs[i], params, x=xrs[i], method='leastsq')
         plt.plot(xrs[i], result.best_fit)
         plt.plot(xrs[i], yrs[i], 'x', ms=2)
-        cent = result.params['G_center'].value
-        amp = result.params['G_height'].value
-        inter = result.params['L_intercept'].value
-        grad = result.params['L_slope'].value
-        height = amp + ((cent * grad) + inter)
+        cent: float = result.params['G_center'].value
+        amp: float = result.params['G_height'].value
+        inter: float = result.params['L_intercept'].value
+        grad: float = result.params['L_slope'].value
+        height: float = amp + ((cent * grad) + inter)
+        heights.append(height)
         cents.append(cent)
         cents_uncert.append(result.params['G_center'].stderr)
-        heights.append(height)
         partial_amp = 1
         partial_grad = cent
         partial_x = grad
         partial_inter = 1
         amp_term = partial_amp * result.params['G_height'].stderr
         grad_term = partial_grad * result.params['L_slope'].stderr
-        x_term = partial_x * 0.1
+        x_term = partial_x * np.mean(np.diff(xrs[i]))
         inter_term = partial_inter * result.params['L_intercept'].stderr
-        # print(amp_term, grad_term, x_term, inter_term)
         height_uncert = np.sqrt(amp_term ** 2 + grad_term ** 2 + x_term ** 2 + inter_term ** 2)
         heights_uncert.append(height_uncert)
     maxy = np.max(heights)
     miny = np.min(heights)
-    # maxx = np.max(cents)
-    # minx = np.min(cents)
-    bounds = [[maxy * 0.97, 0, 0, cents[0] * 0.999], [maxy * 1.03, 0.1, miny * 3, cents[0] * 1.001]]
-    initial = np.array([maxy, 0.003, 0, cents[0]])
+    bounds = [[maxy * 0.95, 0.01, 0, cents[0] * 0.99], [maxy * 1.05, 0.05, miny * 1, cents[0] * 1.01]]
+    initial = np.array([maxy, 0.015, miny, cents[0]])
     popt, pcov = curve_fit(echo_as_T2, xdata=cents, ydata=heights, bounds=bounds, p0=initial, sigma=heights_uncert,
                            maxfev=30000,
-                           method='dogbox')
+                           method='trf')
     plt.plot(cents, echo_as_T2(cents, *popt))
-    plt.plot(cents, heights, 'x', ms=4)
-    plt.xlabel('Time (s)')
-    plt.ylabel('Magnetization (A/m)')
-    ax.grid(color='k', linestyle='--', alpha=0.4)
+    plt.plot(cents, heights, 'x', ms=4, color='k')
+    plt.xlabel("Time (s)")
+    plt.ylabel("Magnetization (A/m)")
+    ax.grid(color="k", linestyle='--', alpha=0.4)
     plt.axhline(popt[0])
     plt.axhline(popt[0] / e)
     plt.text(0.9, 0.9, "T_1: {:.4f} s".format(popt[1]), horizontalalignment='center',
-             verticalalignment='center',
+             verticalalignment="center",
              transform=ax.transAxes,
-             bbox=dict(pad=8, fc='w'), fontsize=16)
+             bbox={'pad': 8, 'fc': 'w'}, fontsize=16)
     fig_manager = plt.get_current_fig_manager()
     fig_manager.window.showMaximized()
     plt.show()
 
 
 def interped_fourier_transformer():
-    dat, filename = pick_dat()
+    dat, filename = pick_dat('RDAT')
     len2 = 2 * len(dat['m'])
     xs = np.linspace(np.min(dat['t']), np.max(dat['t']), len2)
     f = interpolate.Rbf(dat['t'], dat['m'], smooth=3, function='gaussian', epsilon=np.mean(np.diff(xs)) * 3)
@@ -218,7 +214,7 @@ def interped_fourier_transformer():
 
 
 def fourier_transformer():
-    dat, filename = pick_dat()
+    dat, filename = pick_dat('RDAT', 'Select data to be Fourier Transformed')
     sample_rate = round(1 / np.mean(np.diff(dat['t'])), 11)
     length = len(dat['t'])
     fo = fftpack.fft(dat['m'])
@@ -239,7 +235,7 @@ def fourier_transformer():
 
 
 def fourier_curvefit():
-    dat, filename = pick_dat()
+    dat, filename = pick_dat('RDAT')
     sample_rate = round(1 / np.mean(np.diff(dat['t'])), 11)
     length = len(dat['t'])
     fo = fftpack.fft(dat['m'])
@@ -248,7 +244,7 @@ def fourier_curvefit():
 
 
 def pick_ranges():
-    dat, filename = pick_dat('Select file to pick ranges in')
+    dat, filename = pick_dat('RDAT', 'Select file to pick ranges in')
     fig, ax = plt.subplots()
     plt.title('{} Fourier Transformed'.format(filename))
     figure, = ax.plot(dat['t'], dat['m'])
@@ -259,4 +255,4 @@ def pick_ranges():
 
 
 # pick_ranges()
-echo_gaussian_fits()
+echo_fits()
