@@ -3,6 +3,7 @@ from typing import List
 
 import matplotlib.pyplot as plt
 import numpy as np
+import seaborn as sns
 from lmfit.models import GaussianModel, LinearModel
 from pandas import read_csv, read_hdf
 from scipy import fftpack, interpolate
@@ -10,13 +11,17 @@ from scipy.optimize import curve_fit
 
 from range_selector import RangeTool
 
+sns.set_style("whitegrid")
+flatui = ["#9b59b6", "#3498db", "#95a5a6", "#e74c3c", "#34495e", "#2ecc71"]
+sns.set_palette(flatui)
 # from converter import DataConvert
 
 
 # plt.style.use('scione')
 e = 2.7182818
-plt.switch_backend('QT5Agg')
 
+
+# plt.switch_backend('QT5Agg')
 
 def find_nearest(array, value):
     idx = (np.abs(array - value)).idxmin()
@@ -144,7 +149,7 @@ def echo_fits():
         model = mdl + lne
         result = model.fit(yrs[i], params, x=xrs[i], method='leastsq')
         plt.plot(xrs[i], result.best_fit)
-        plt.plot(xrs[i], yrs[i], 'x', ms=2)
+        plt.plot(xrs[i], yrs[i], 'x', ms=0.6, color='k')
         cent: float = result.params['G_center'].value
         amp: float = result.params['G_height'].value
         inter: float = result.params['L_intercept'].value
@@ -171,13 +176,13 @@ def echo_fits():
                            maxfev=30000,
                            method='dogbox')
     vals = np.linspace(0, np.max(cents), 1000)
-    plt.plot(vals, echo_as_T2(vals, *popt))
+    plt.plot(vals, echo_as_T2(vals, *popt), ls='-.', color='k', lw=1)
     plt.plot(cents, heights, 'x', ms=4, color='k')
     plt.xlabel("Time (s)")
     plt.ylabel("Magnetization (A/m)")
     ax.grid(color="k", linestyle='--', alpha=0.4)
-    plt.axhline(popt[0])
-    plt.axhline(popt[0] / e)
+    plt.axhline(popt[0], color='k', ls='--', alpha=0.7, lw=1, zorder=1)
+    plt.axhline(popt[0] / e, color='k', ls='--', alpha=0.7, lw=1, zorder=1)
     plt.text(0.9, 0.9, "T_1: {:.4f} s".format(popt[1]), horizontalalignment='center',
              verticalalignment="center",
              transform=ax.transAxes,
