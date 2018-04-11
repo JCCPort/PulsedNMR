@@ -28,7 +28,14 @@ def find_nearest(array, value):
     return array[idx]
 
 
-def pick_dat(initdir='RDAT', title="Select file", cols=['t', 'm']):
+def pick_dat(cols, initdir='RDAT', title="Select file"):
+    """
+    Data reader that is called within many other functions.
+    :param initdir: This is the directory that the function will open by default to look for the data (.csv or .h5).
+    :param title: The message to display at the top of the dialogue box.
+    :param cols: Headers to give to the data.
+    :return: Pandas DataFrame with headers that contains the selected data.
+    """
     root = Tk()
     root.filename = filedialog.askopenfilename(initialdir="C:\\Users\Josh\IdeaProjects\PulsedNMR\{}".format(initdir),
                                                title=title)
@@ -74,9 +81,12 @@ def echo_as_T2(t, M0, T2, c, ph):
     return M0 * (np.exp(-(t / T2) + ph)) + c
 
 
-
 def FID_Exponential_fit():
-    dat, filename = pick_dat()
+    """
+    A mixture of smoothing and differentiating is used to determine the point at which the FID shape is dominantly
+    exponential decay and fits the echo_as_T2 function to the data in this region.
+    """
+    dat, filename = pick_dat(['t', 'm'])
     maxi = np.max(dat['m'])
     try:
         smoothdat = interpolate.UnivariateSpline(dat['t'], dat['m'], k=5, s=200)
@@ -117,7 +127,11 @@ def FID_Exponential_fit():
 
 
 def range_to_list():
-    dat1, filename1 = pick_dat("RDAT_Test", "Select dataset to draw from")
+    """
+    This function is used to create an array of values from a dataset that's limits are given by a list lower and
+    upper limits.
+    """
+    dat1, filename1 = pick_dat(['t', 'm'], "RDAT_Test", "Select dataset to draw from")
     dat2 = read_csv("C:\\Users\\Josh\\IdeaProjects\\PulsedNMR\\Ranges\\{}".format(filename1),
                     names=['Lower Bound', 'LowerIndex', 'Upper Bound', 'UpperIndex'])
     xrange = []
@@ -133,8 +147,11 @@ def range_to_list():
     return xranges, yranges, xrange, yrange
 
 
-# TODO: Compare this method with simply taking the maximum point of the peaks
 def echo_fits():
+    """
+    Fits a Gaussian with a linear background to each of the echo peaks, finds the centroid and top of
+    the Gaussian, then fits the echo_as_T2 function to the points given by x=centroid, y=top.
+    """
     xrs, yrs, xr, yr = range_to_list()
     cents: List[float] = []
     cents_uncert: List[float] = []
@@ -192,8 +209,54 @@ def echo_fits():
     plt.show()
 
 
+def simple_echo_fits():
+    """
+    Takes the highest point of each echo and fits the echo_as_T2 function to those points.
+    """
+    xrs, yrs, xr, yr = range_to_list()
+    cents: List[float] = []
+    cents_uncert: List[float] = []
+    heights: List[float] = []
+    heights_uncert: List[float] = []
+    fig, ax = plt.subplots()
+    for i in range(0, len(xrs)):
+        max_y = np.max(yrs[i])
+        max_y_loc = np.where(yrs[i] == max_y)[0][0]
+        cents.append(xrs[i][max_y_loc])
+        cents_uncert.append(np.mean(np.diff(xrs[i])))
+        heights_uncert.append(max_y)
+        heights.append(max_y)
+    maxy = np.max(heights)
+    miny = np.min(heights)
+    bounds = [[maxy * 0.95, 0.01, 0, 0], [maxy * 2, 0.05, miny * 1, cents[0] * 0.0001]]
+    initial = np.array([maxy * 1.3, 0.015, miny * 0.5, cents[0] * 0.00005])
+    popt, pcov = curve_fit(echo_as_T2, xdata=cents, ydata=heights, bounds=bounds, p0=initial, sigma=heights_uncert,
+                           maxfev=30000,
+                           method='dogbox')
+    vals = np.linspace(0, np.max(cents), 1000)
+    plt.plot(vals, echo_as_T2(vals, *popt), ls='-.', color='k', lw=1.7)
+    plt.plot(cents, heights, 'o', ms=8, color='k', mew=1.5, markerfacecolor="None")
+    plt.xlabel("Time (s)", fontsize=14)
+    plt.ylabel("Magnetization (A/m)", fontsize=14)
+    # ax.grid(color="k", linestyle='--', alpha=0.4)
+    plt.axhline(popt[0], color='k', ls='--', alpha=0.7, lw=1.5, zorder=1)
+    plt.axhline(popt[0] / e, color='k', ls='--', alpha=0.7, lw=1.5, zorder=1)
+    plt.text(0.9, 0.9, "T_1: {:.4f} s".format(popt[1]), horizontalalignment='center',
+             verticalalignment="center",
+             transform=ax.transAxes,
+             bbox={'pad': 8, 'fc': 'w'}, fontsize=16)
+    fig_manager = plt.get_current_fig_manager()
+    fig_manager.window.showMaximized()
+    plt.show()
+
+
 def interped_fourier_transformer():
-    dat, filename = pick_dat('RDAT')
+    """
+    Fourier transforms the combined FID signals of different chemical sites to give a frequency (NMR) spectrum.
+    This is done after having used radial basis function interpolation to remove noise and smooth out high frequency
+    signals that are not resolvable.
+    """
+    dat, filename = pick_dat(['t', 'm'], 'RDAT')
     len2 = 2 * len(dat['m'])
     xs = np.linspace(np.min(dat['t']), np.max(dat['t']), len2)
     f = interpolate.Rbf(dat['t'], dat['m'], smooth=3, function='gaussian', epsilon=np.mean(np.diff(xs)) * 3)
@@ -221,7 +284,10 @@ def interped_fourier_transformer():
 
 
 def fourier_transformer():
-    dat, filename = pick_dat('RDAT', 'Select data to be Fourier Transformed')
+    """
+    Fourier transforms the combined FID signals of different chemical sites to give a frequency (NMR) spectrum.
+    """
+    dat, filename = pick_dat(['t', 'm'], 'RDAT', 'Select data to be Fourier Transformed')
     sample_rate = round(1 / np.mean(np.diff(dat['t'])), 11)
     length = len(dat['t'])
     fo = fftpack.fft(dat['m'])
@@ -242,7 +308,10 @@ def fourier_transformer():
 
 
 def fourier_curvefit():
-    dat, filename = pick_dat('RDAT')
+    """
+    IN DEVELOPMENT. This will be used to fit a Lorentzian to the frequency spectrum returned by the Fourier transforms.
+    """
+    dat, filename = pick_dat(['t', 'm'], 'RDAT')
     sample_rate = round(1 / np.mean(np.diff(dat['t'])), 11)
     length = len(dat['t'])
     fo = fftpack.fft(dat['m'])
@@ -251,7 +320,12 @@ def fourier_curvefit():
 
 
 def pick_ranges():
-    dat, filename = pick_dat('RDAT', 'Select file to pick ranges in')
+    """
+    Tool to read data and present it graphically ready for data ranges, to be used in fitting, to be made. Press tab
+    to mark the lower bound, shift to mark the upper bound, delete to remove the last range selected, enter to open a
+    dialog box to save the ranges as a .csv file. Exit closes the plot without saving ranges.
+    """
+    dat, filename = pick_dat(['t', 'm'], 'RDAT', 'Select file to pick ranges in')
     fig, ax = plt.subplots()
     plt.title('{} Fourier Transformed'.format(filename))
     figure, = ax.plot(dat['t'], dat['m'])
@@ -262,4 +336,4 @@ def pick_ranges():
 
 
 # pick_ranges()
-echo_fits()
+simple_echo_fits()
