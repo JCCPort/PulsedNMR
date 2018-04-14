@@ -105,28 +105,27 @@ class RangeTool:
     #                 print('clicked')
 
     def rangeremove(self, event):
-        if event.key == 'delete' and self.il == self.iu and self.il > 0:
-            if not self.Ranges.empty:
-                self.figure2.figure.canvas.mpl_disconnect(self.cid1)
-                try:
-                    self.Ranges.at[self.il - 1, 'Displayed'] = float('NaN')
-                    self.il -= 1
-                    self.iu -= 1
-                    self.Ranges.drop(self.Ranges.index[-1], inplace=True)
-                    Polys = self.ax.get_children()
-                    Polys[len(self.Ranges.index)].remove()
-                except IndexError:
-                    self.Ranges.at[self.il - 1, 'Displayed'] = float('NaN')
-                    self.il -= 1
-                    self.iu -= 1
-                    self.Ranges.drop(self.Ranges.index[0], inplace=True)
-                    Polys = self.ax.get_children()
-                    Polys[0].remove()
-                    if self.Ranges == 'Empty DataFrame':
-                        print('Range list is empty')
-                finally:
-                    pass
-                self.cid1 = self.figure2.figure.canvas.mpl_connect('key_press_event', self.rangeselect)
+        if event.key == 'delete' and self.il == self.iu and self.il > 0 and not self.Ranges.empty:
+            self.figure2.figure.canvas.mpl_disconnect(self.cid1)
+            try:
+                self.Ranges.at[self.il - 1, 'Displayed'] = float('NaN')
+                self.il -= 1
+                self.iu -= 1
+                self.Ranges.drop(self.Ranges.index[-1], inplace=True)
+                Polys = self.ax.get_children()
+                Polys[len(self.Ranges.index)].remove()
+            except IndexError:
+                self.Ranges.at[self.il - 1, 'Displayed'] = float('NaN')
+                self.il -= 1
+                self.iu -= 1
+                self.Ranges.drop(self.Ranges.index[0], inplace=True)
+                Polys = self.ax.get_children()
+                Polys[0].remove()
+                if self.Ranges == 'Empty DataFrame':
+                    print('Range list is empty')
+            finally:
+                pass
+            self.cid1 = self.figure2.figure.canvas.mpl_connect('key_press_event', self.rangeselect)
 
     def finishplot(self, event):
         self.Ranges.astype('float32')
