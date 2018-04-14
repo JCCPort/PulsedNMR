@@ -142,7 +142,7 @@ def FID_Exponential_fit():
 def range_to_list():
     """
     This function is used to create an array of values from a dataset that's limits are given by a list lower and
-    upper limits.
+    upper limits. THIS IS CONFIGURED FOR MY COMPUTER, CHANGE THE DIRECTORY TO USE.
     """
     dat1, filename1 = pick_dat(['t', 'm'], "RDAT_Test", "Select dataset to draw from")
     dat2 = read_csv("C:\\Users\\Josh\\IdeaProjects\\PulsedNMR\\Ranges\\{}".format(filename1),
@@ -157,7 +157,7 @@ def range_to_list():
     for o in range(0, len(xrange)):
         xranges[o] = xrange[o]
         yranges[o] = yrange[o]
-    return xranges, yranges, xrange, yrange, filename1
+    return xranges, yranges, xrange, yrange, filename1, dat1
 
 
 def echo_fits():
@@ -165,12 +165,11 @@ def echo_fits():
     Fits a Gaussian with a linear background to each of the echo peaks, finds the centroid and top of
     the Gaussian, then fits the echo_as_T2 function to the points given by x=centroid, y=top.
     """
-    xrs, yrs, xr, yr, filename = range_to_list()
+    xrs, yrs, xr, yr, filename, dat1 = range_to_list()
     cents: List[float] = []
     cents_uncert: List[float] = []
     heights: List[float] = []
     heights_uncert: List[float] = []
-    fig, ax = plt.subplots()
     for i in range(0, len(xrs)):
         mdl = GaussianModel(prefix='G_')
         lne = LinearModel(prefix='L_')
@@ -185,8 +184,6 @@ def echo_fits():
         params.add('L_intercept', value=min_y, min=min_y * 0.8, max=min_y * 1.2)
         model = mdl + lne
         result = model.fit(yrs[i], params, x=xrs[i], method='leastsq')
-        plt.plot(xrs[i], result.best_fit)
-        plt.plot(xrs[i], yrs[i], 'x', ms=0.6, color='k')
         cent: float = result.params['G_center'].value
         amp: float = result.params['G_height'].value
         inter: float = result.params['L_intercept'].value
@@ -220,18 +217,27 @@ def echo_fits():
     param.add('ph', value=cents[0] * 0.1, min=0, max=cents[0] * 1)
     result_2 = efit.fit(heights, param, t=cents, method='leastsq', weights=1. / heights)
     print(result_2.fit_report())
-    print(result_2.params.pretty_print())
-    plt.plot(cents, result_2.best_fit)
-    plt.plot(cents, heights, 'x', ms=4, color='k')
-    plt.xlabel("Time (s)")
-    plt.ylabel("Magnetization (A/m)")
+    print(result_2.params.pretty_print(fmt='e', precision=2))
+    ax = plt.gca()
+    ax.set_xlabel('Time (s)', fontsize=14)
+    ax.set_ylabel('Magnetization (A/m)', fontsize=14)
+    xes = np.linspace(np.min(cents), np.max(cents), 100)
+    y = efit.eval(t=xes, params=result_2.params)
+    plt.plot(xes, y, antialiased=True)
+    plt.plot(cents, heights, 'x', ms=8, color='k')
+    plt.plot(dat1['t'], dat1['m'], lw=2, antialiased=True,
+             color='#4a4a4a', zorder=1)
     plt.title(filename)
-    # plt.axhline(popt[0], color='k', ls='--', alpha=0.7, lw=1, zorder=1)
-    # plt.axhline(popt[0] / e, color='k', ls='--', alpha=0.7, lw=1, zorder=1)
-    # plt.text(0.9, 0.9, "T_1: {:.4f} s".format(popt[1]), horizontalalignment='center',
-    #          verticalalignment="center",
-    #          transform=ax.transAxes,
-    #          bbox={'pad': 8, 'fc': 'w'}, fontsize=16)
+    plt.xlim(left=0, right=np.max(cents) * 1.1)
+    plt.ylim(bottom=0, top=result_2.params['M0'].value * 1.1)
+    plt.axhline(result_2.params['M0'].value, color='k', ls='--', alpha=0.7, lw=1, zorder=2)
+    plt.axhline(result_2.params['M0'].value / e, color='k', ls='--', alpha=0.7, lw=1, zorder=2)
+    plt.text(0.9, 0.9, "T_1: {:.4f} s".format(result_2.params['T2'].value), horizontalalignment='center',
+             verticalalignment="center",
+             transform=ax.transAxes,
+             bbox={'pad': 8, 'fc': 'w'}, fontsize=14)
+    plt.tight_layout()
+    plt.tick_params(axis='both', which='major', labelsize=13)
     fig_manager = plt.get_current_fig_manager()
     fig_manager.window.showMaximized()
     plt.show()
@@ -241,7 +247,7 @@ def simple_echo_fits():
     """
     Takes the highest point of each echo and fits the echo_as_T2 function to those points.
     """
-    xrs, yrs, xr, yr, filename = range_to_list()
+    xrs, yrs, xr, yr, filename, dat1 = range_to_list()
     length = len(yrs)
     max_y = [np.max(yrs[i]) for i in range(length)]
     max_y_loc = [np.where(yrs[i] == max_y[i])[0][0] for i in range(length)]
@@ -264,9 +270,26 @@ def simple_echo_fits():
     result_2 = efit.fit(heights, param, t=cents, method='leastsq', weights=1. / heights)
     print(result_2.fit_report())
     print(result_2.params.pretty_print())
-    plt.plot(cents, result_2.best_fit)
-    plt.plot(cents, heights, 'x', ms=4, color='k')
+    ax = plt.gca()
+    ax.set_xlabel('Time (s)', fontsize=14)
+    ax.set_ylabel('Magnetization (A/m)', fontsize=14)
+    xes = np.linspace(np.min(cents), np.max(cents), 100)
+    y = efit.eval(t=xes, params=result_2.params)
+    plt.plot(xes, y, antialiased=True)
+    plt.plot(cents, heights, 'x', ms=8, color='k')
+    plt.plot(dat1['t'], dat1['m'], lw=2, antialiased=True,
+             color='#4a4a4a', zorder=1)
     plt.title(filename)
+    plt.xlim(left=0, right=np.max(cents) * 1.1)
+    plt.ylim(bottom=0, top=result_2.params['M0'].value * 1.1)
+    plt.axhline(result_2.params['M0'].value, color='k', ls='--', alpha=0.7, lw=1, zorder=2)
+    plt.axhline(result_2.params['M0'].value / e, color='k', ls='--', alpha=0.7, lw=1, zorder=2)
+    plt.text(0.9, 0.9, "T_1: {:.4f} s".format(result_2.params['T2'].value), horizontalalignment='center',
+             verticalalignment="center",
+             transform=ax.transAxes,
+             bbox={'pad': 8, 'fc': 'w'}, fontsize=14)
+    plt.tight_layout()
+    plt.tick_params(axis='both', which='major', labelsize=13)
     fig_manager = plt.get_current_fig_manager()
     fig_manager.window.showMaximized()
     plt.show()
@@ -357,4 +380,4 @@ def pick_ranges():
     plt.show()
 
 
-simple_echo_fits()
+echo_fits()
