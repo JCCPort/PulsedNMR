@@ -97,7 +97,6 @@ def FID_Exponential_fit():
         grad1 = np.gradient(smoothdat(dat['t']))
         grad1_2 = np.gradient(grad1)
         grad2 = interpolate.UnivariateSpline(dat['t'], grad1_2, k=3, s=0)
-        s = []
         max_pos = dat['t'][int(np.median(np.where(dat['m'] == find_nearest(dat['m'], maxi))[0]))]
         roots_range = range(0, len(grad2.roots()))
         f = [find_nearest(dat['t'], grad2.roots()[p]) for p in roots_range]
@@ -151,9 +150,11 @@ def range_to_list():
     yrange = []
     xranges = {}
     yranges = {}
+    x_append = xrange.append
+    y_append = yrange.append
     for o in range(0, len(dat2)):
-        xrange.append((dat1['t'][dat2['LowerIndex'][o]:dat2['UpperIndex'][o] + 1]).values)
-        yrange.append((dat1['m'][dat2['LowerIndex'][o]:dat2['UpperIndex'][o] + 1]).values)
+        x_append((dat1['t'][dat2['LowerIndex'][o]:dat2['UpperIndex'][o] + 1]).values)
+        y_append((dat1['m'][dat2['LowerIndex'][o]:dat2['UpperIndex'][o] + 1]).values)
     for o in range(0, len(xrange)):
         xranges[o] = xrange[o]
         yranges[o] = yrange[o]
@@ -352,18 +353,6 @@ def fourier_transformer():
     plt.show()
 
 
-def fourier_curvefit():
-    """
-    IN DEVELOPMENT. This will be used to fit a Lorentzian to the frequency spectrum returned by the Fourier transforms.
-    """
-    dat, filename = pick_dat(['t', 'm'], 'RDAT')
-    sample_rate = round(1 / np.mean(np.diff(dat['t'])), 11)
-    length = len(dat['t'])
-    fo = fftpack.fft(dat['m'])
-    freq4 = [1e6 * x * sample_rate / length for x in np.array(range(0, length))]
-    halfln = int(length / 2)
-
-
 def pick_ranges():
     """
     Tool to read data and present it graphically ready for data ranges, to be used in fitting, to be made. Press tab
@@ -380,4 +369,4 @@ def pick_ranges():
     plt.show()
 
 
-echo_fits()
+simple_echo_fits()
