@@ -4,6 +4,7 @@ from typing import List
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
+from lmfit import Model
 from lmfit.models import GaussianModel, LinearModel
 from pandas import read_csv, read_hdf, DataFrame, set_option
 from scipy import fftpack, interpolate
@@ -205,33 +206,32 @@ def echo_fits():
         height_uncert = np.sqrt(amp_term ** 2 + grad_term ** 2 + x_term ** 2 + inter_term ** 2)
         heights_uncert.append(height_uncert)
     heights = np.array(heights)
+    cents = np.array(cents)
     maxy = np.max(heights)
     miny = np.min(heights)
     decay_pos = np.where(heights == find_nearest(heights, maxy / e))[0][0]
     decay_pos_time = cents[decay_pos]
-    bounds = [[maxy * 0.9, decay_pos_time * 0.3, miny * 0.9, 0], [maxy * 2, decay_pos_time * 1.7, miny * 1.1,
-                                                                  cents[0] * 0.7]]
-    initial = np.array([maxy * 1, decay_pos_time, miny, cents[0] * 0.5])
-    popt, pcov = curve_fit(echo_as_T2, xdata=cents, ydata=heights, bounds=bounds, p0=initial, sigma=heights_uncert,
-                           maxfev=30000,
-                           method='dogbox')
-    vals = np.linspace(0, np.max(cents), 1000)
-    errs = np.diag(pcov)
-    datas1 = np.array([popt, errs, initial])
-    datas2 = np.transpose(datas1)
-    pars = DataFrame(datas2, columns=['Parameter', 'Uncertainty', 'Initial'], index=['M0', 'T2', 'Intercept', 'Phase'])
-    print('\n', pars)
-    plt.plot(vals, echo_as_T2(vals, *popt), ls='-.', color='k', lw=1)
+    avg_y_sep = abs(np.mean(np.diff(heights)))
+    efit = Model(echo_as_T2)
+    param = efit.make_params()
+    param.add('M0', value=maxy, min=maxy * 0.8, max=maxy + (avg_y_sep * 2))
+    param.add('T2', value=decay_pos_time, min=decay_pos_time * 0.1, max=decay_pos_time * 1.5)
+    param.add('c', value=miny * 0.3, min=miny * 0.1, max=miny * 1)
+    param.add('ph', value=cents[0] * 0.1, min=0, max=cents[0] * 1)
+    result_2 = efit.fit(heights, param, t=cents, method='leastsq', weights=1. / heights)
+    print(result_2.fit_report())
+    print(result_2.params.pretty_print())
+    plt.plot(cents, result_2.best_fit)
     plt.plot(cents, heights, 'x', ms=4, color='k')
     plt.xlabel("Time (s)")
     plt.ylabel("Magnetization (A/m)")
     plt.title(filename)
-    plt.axhline(popt[0], color='k', ls='--', alpha=0.7, lw=1, zorder=1)
-    plt.axhline(popt[0] / e, color='k', ls='--', alpha=0.7, lw=1, zorder=1)
-    plt.text(0.9, 0.9, "T_1: {:.4f} s".format(popt[1]), horizontalalignment='center',
-             verticalalignment="center",
-             transform=ax.transAxes,
-             bbox={'pad': 8, 'fc': 'w'}, fontsize=16)
+    # plt.axhline(popt[0], color='k', ls='--', alpha=0.7, lw=1, zorder=1)
+    # plt.axhline(popt[0] / e, color='k', ls='--', alpha=0.7, lw=1, zorder=1)
+    # plt.text(0.9, 0.9, "T_1: {:.4f} s".format(popt[1]), horizontalalignment='center',
+    #          verticalalignment="center",
+    #          transform=ax.transAxes,
+    #          bbox={'pad': 8, 'fc': 'w'}, fontsize=16)
     fig_manager = plt.get_current_fig_manager()
     fig_manager.window.showMaximized()
     plt.show()
@@ -241,40 +241,32 @@ def simple_echo_fits():
     """
     Takes the highest point of each echo and fits the echo_as_T2 function to those points.
     """
-    xrs, yrs, xr, yr = range_to_list()
+    xrs, yrs, xr, yr, filename = range_to_list()
     length = len(yrs)
     max_y = [np.max(yrs[i]) for i in range(length)]
     max_y_loc = [np.where(yrs[i] == max_y[i])[0][0] for i in range(length)]
-    # cents_uncert = [np.mean(np.diff(xrs[i])) for i in range(length)]
     cents = [xrs[i][max_y_loc[i]] for i in range(length)]
     heights = max_y
     # TODO: Find a better value for the uncertainty on y-values.
-    heights_uncert = max_y
-    fig, ax = plt.subplots()
+    heights = np.array(heights)
+    cents = np.array(cents)
     maxy = np.max(heights)
     miny = np.min(heights)
-    bounds = [[maxy * 0.95, 0.01, 0, 0], [maxy * 2, 0.05, miny * 1, cents[0] * 0.0001]]
-    initial = np.array([maxy * 1.3, 0.015, miny * 0.5, cents[0] * 0.00005])
-    popt, pcov = curve_fit(echo_as_T2, xdata=cents, ydata=heights, bounds=bounds, p0=initial, sigma=heights_uncert,
-                           maxfev=30000,
-                           method='dogbox')
-    vals = np.linspace(0, np.max(cents), 1000)
-    errs = np.diag(pcov)
-    datas1 = np.array([popt, errs, initial])
-    datas2 = np.transpose(datas1)
-    pars = DataFrame(datas2, columns=['Parameter', 'Uncertainty', 'Initial'], index=['M0', 'T2', 'Intercept', 'Phase'])
-    print('\n', pars)
-    plt.plot(vals, echo_as_T2(vals, *popt), ls='-.', color='k', lw=1.7)
-    plt.plot(cents, heights, 'o', ms=8, color='k', mew=1.5, markerfacecolor="None")
-    plt.xlabel("Time (s)", fontsize=14)
-    plt.ylabel("Magnetization (A/m)", fontsize=14)
-    # ax.grid(color="k", linestyle='--', alpha=0.4)
-    plt.axhline(popt[0], color='k', ls='--', alpha=0.7, lw=1.5, zorder=1)
-    plt.axhline(popt[0] / e, color='k', ls='--', alpha=0.7, lw=1.5, zorder=1)
-    plt.text(0.9, 0.9, "T_1: {:.4f} s".format(popt[1]), horizontalalignment='center',
-             verticalalignment="center",
-             transform=ax.transAxes,
-             bbox={'pad': 8, 'fc': 'w'}, fontsize=16)
+    decay_pos = np.where(heights == find_nearest(heights, maxy / e))[0][0]
+    decay_pos_time = cents[decay_pos]
+    avg_y_sep = abs(np.mean(np.diff(heights)))
+    efit = Model(echo_as_T2)
+    param = efit.make_params()
+    param.add('M0', value=maxy, min=maxy * 0.8, max=maxy + (avg_y_sep * 3))
+    param.add('T2', value=decay_pos_time, min=decay_pos_time * 0.1, max=decay_pos_time * 1.5)
+    param.add('c', value=miny * 0.3, min=miny * 0.1, max=miny * 1.2)
+    param.add('ph', value=cents[0] * 0.1, min=0, max=cents[0] * 1)
+    result_2 = efit.fit(heights, param, t=cents, method='leastsq', weights=1. / heights)
+    print(result_2.fit_report())
+    print(result_2.params.pretty_print())
+    plt.plot(cents, result_2.best_fit)
+    plt.plot(cents, heights, 'x', ms=4, color='k')
+    plt.title(filename)
     fig_manager = plt.get_current_fig_manager()
     fig_manager.window.showMaximized()
     plt.show()
@@ -365,4 +357,4 @@ def pick_ranges():
     plt.show()
 
 
-echo_fits()
+simple_echo_fits()
