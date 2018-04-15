@@ -3,27 +3,22 @@ from typing import List
 
 import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
 from lmfit import Model
 from lmfit.models import GaussianModel, LinearModel
 from pandas import read_csv, read_hdf, DataFrame, set_option
 from scipy import fftpack, interpolate
 from scipy.optimize import curve_fit
+from seaborn import set_style
 
 from range_selector import RangeTool
 
 set_option('column_space', 80)
-sns.set_style("whitegrid")
-flatui = ["#9b59b6", "#3498db", "#95a5a6", "#e74c3c", "#34495e", "#2ecc71"]
-sns.set_palette(flatui)
-# from converter import DataConvert
+set_style("whitegrid")
+# set_palette(["#9b59b6", "#3498db", "#95a5a6", "#e74c3c", "#34495e", "#2ecc71"])
 
 
-# plt.style.use('scione')
 e = 2.7182818
 
-
-# plt.switch_backend('QT5Agg')
 
 def find_nearest(array, value):
     idx = (np.abs(array - value)).argmin()
@@ -181,8 +176,9 @@ def echo_fits():
         max_x = np.max(yrs[i])
         min_x = np.min(yrs[i])
         predicted_slope = (max_y - min_y) / (max_x - min_x)
-        params.add('L_slope', value=predicted_slope, min=predicted_slope * 1.2, max=predicted_slope * 0.8)
-        params.add('L_intercept', value=min_y, min=min_y * 0.8, max=min_y * 1.2)
+        params.add('L_slope', value=predicted_slope, min=predicted_slope * 1.1, max=predicted_slope * 0.9)
+        params.add('L_intercept', value=min_y, min=min_y * 0.9, max=min_y * 1.1)
+        params.add('G_height', value=max_y - min_y, min=(max_y - min_y) * 0.99, max=(max_y - min_y) * 1.05)
         model = mdl + lne
         result = model.fit(yrs[i], params, x=xrs[i], method='leastsq')
         cent: float = result.params['G_center'].value
@@ -216,9 +212,11 @@ def echo_fits():
     param.add('T2', value=decay_pos_time, min=decay_pos_time * 0.1, max=decay_pos_time * 1.5)
     param.add('c', value=miny * 0.3, min=miny * 0.1, max=miny * 1)
     param.add('ph', value=cents[0] * 0.1, min=0, max=cents[0] * 1)
-    result_2 = efit.fit(heights, param, t=cents, method='leastsq', weights=1. / heights)
+    result_2 = efit.fit(heights, param, t=cents, method='leastsq', weights=np.sqrt(np.mean(np.diff(dat1['m'])) ** 2 +
+                                                                                   np.array(heights_uncert) ** 2) /
+                                                                           heights)
     print(result_2.fit_report())
-    print(result_2.params.pretty_print(fmt='e', precision=2))
+    print('\n', result_2.params.pretty_print(fmt='e', precision=2))
     ax = plt.gca()
     ax.set_xlabel('Time (s)', fontsize=14)
     ax.set_ylabel('Magnetization (A/m)', fontsize=14)
@@ -230,7 +228,7 @@ def echo_fits():
              color='#4a4a4a', zorder=1)
     plt.title(filename)
     plt.xlim(left=0, right=np.max(cents) * 1.1)
-    plt.ylim(bottom=0, top=result_2.params['M0'].value * 1.1)
+    plt.ylim(bottom=0, top=result_2.params['M0'].value * 1.3)
     plt.axhline(result_2.params['M0'].value, color='k', ls='--', alpha=0.7, lw=1, zorder=2)
     plt.axhline(result_2.params['M0'].value / e, color='k', ls='--', alpha=0.7, lw=1, zorder=2)
     plt.text(0.9, 0.9, "T_1: {:.4f} s".format(result_2.params['T2'].value), horizontalalignment='center',
@@ -267,10 +265,10 @@ def simple_echo_fits():
     param.add('M0', value=maxy, min=maxy * 0.8, max=maxy + (avg_y_sep * 3))
     param.add('T2', value=decay_pos_time, min=decay_pos_time * 0.1, max=decay_pos_time * 1.5)
     param.add('c', value=miny * 0.3, min=miny * 0.1, max=miny * 1.2)
-    param.add('ph', value=cents[0] * 0.1, min=0, max=cents[0] * 1)
-    result_2 = efit.fit(heights, param, t=cents, method='leastsq', weights=1. / heights)
+    param.add('ph', value=cents[0] * 0.5, min=0, max=cents[0] * 1)
+    result_2 = efit.fit(heights, param, t=cents, method='leastsq', weights=np.mean(np.diff(dat1['m'])) / heights)
     print(result_2.fit_report())
-    print(result_2.params.pretty_print())
+    print('\n', result_2.params.pretty_print())
     ax = plt.gca()
     ax.set_xlabel('Time (s)', fontsize=14)
     ax.set_ylabel('Magnetization (A/m)', fontsize=14)
@@ -282,7 +280,7 @@ def simple_echo_fits():
              color='#4a4a4a', zorder=1)
     plt.title(filename)
     plt.xlim(left=0, right=np.max(cents) * 1.1)
-    plt.ylim(bottom=0, top=result_2.params['M0'].value * 1.1)
+    # plt.ylim(bottom=0, top=result_2.params['M0'].value * 1.1)
     plt.axhline(result_2.params['M0'].value, color='k', ls='--', alpha=0.7, lw=1, zorder=2)
     plt.axhline(result_2.params['M0'].value / e, color='k', ls='--', alpha=0.7, lw=1, zorder=2)
     plt.text(0.9, 0.9, "T_1: {:.4f} s".format(result_2.params['T2'].value), horizontalalignment='center',
@@ -347,7 +345,7 @@ def fourier_transformer():
     fig, ax = plt.subplots()
     plt.title('{} Fourier Transformed'.format(filename))
     figure, = ax.plot(freq4[1:halfln], abs(fo[1:halfln]))
-    Sel = RangeTool(freq4[1:halfln], abs(fo[1:halfln]), figure, ax, 'thing')
+    # Sel = RangeTool(freq4[1:halfln], abs(fo[1:halfln]), figure, ax, 'thing')
     fig_manager = plt.get_current_fig_manager()
     fig_manager.window.showMaximized()
     plt.show()
